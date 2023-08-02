@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, TouchableOpacity, SafeAreaView, Text } from 'react-native';
+import {
+    StyleSheet,
+    View,
+    TouchableOpacity,
+    SafeAreaView,
+    Text,
+    PermissionsAndroid,
+    Linking,
+    Alert
+} from 'react-native';
 import { RNCamera } from 'react-native-camera';
 import Entypo from 'react-native-vector-icons/Entypo';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -28,18 +37,48 @@ const Camera = ({ navigation }) => {
     } = useStopwatch({ autoStart: false });
 
     const onStartRecording = async () => {
-        if (onCameraRef && !isRecording) {
-            setIsRecording(true);
-            reset();
-            const options = {
-                quality: RNCamera.Constants.VideoQuality['1080p'],
-                orientation: "auto"
-            };
-            const data = await onCameraRef.recordAsync(options);
-            onCreateVideoThumbnail(data);
-            navigation.navigate('PLAYER', data);
-        }
+        onCheckCameraPermissionAndRequest(async () => {
+            if (onCameraRef && !isRecording) {
+                setIsRecording(true);
+                reset();
+                const options = {
+                    quality: RNCamera.Constants.VideoQuality['1080p'],
+                    orientation: "auto"
+                };
+                const data = await onCameraRef.recordAsync(options);
+                onCreateVideoThumbnail(data);
+                navigation.navigate('PLAYER', data);
+            }
+        })
     };
+
+    const onCheckCameraPermissionAndRequest = async (onOpenCamera) => {
+        try {
+            const granted = await PermissionsAndroid.requestMultiple([
+                PermissionsAndroid.PERMISSIONS.CAMERA,
+                PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+            ]);
+
+            if (Object.values(granted).every((permission) => permission === PermissionsAndroid.RESULTS.GRANTED)) {
+                onOpenCamera();
+            } else {
+                Alert.alert('Need Permissions', 'Open Setting > Permissions and allow access to record video', [
+                    {
+                        text: 'Not now',
+                        onPress: () => { },
+                        style: 'cancel',
+                    },
+                    {
+                        text: 'Open Settings', onPress: () => {
+                            Linking.openSettings();
+                        }
+                    },
+                ]);
+            }
+        } catch (err) {
+            console.warn(err);
+        }
+    }
 
     const onCreateVideoThumbnail = (data) => {
         createThumbnail({
