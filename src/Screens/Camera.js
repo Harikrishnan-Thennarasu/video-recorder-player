@@ -36,23 +36,17 @@ const Camera = ({ navigation }) => {
         reset,
     } = useStopwatch({ autoStart: false });
 
-    const onStartRecording = async () => {
-        onCheckCameraPermissionAndRequest(async () => {
-            if (onCameraRef && !isRecording) {
-                setIsRecording(true);
-                reset();
-                const options = {
-                    quality: RNCamera.Constants.VideoQuality['1080p'],
-                    orientation: "auto"
-                };
-                const data = await onCameraRef.recordAsync(options);
-                onCreateVideoThumbnail(data);
-                navigation.navigate('PLAYER', data);
+    const toPascalCase = (string) => {
+        return [...string].map((item, index) => {
+            if (index === 0) {
+                return item.toUpperCase();
+            } else {
+                return item.toLowerCase();
             }
-        })
-    };
+        }).join('')
+    }
 
-    const onCheckCameraPermissionAndRequest = async (onOpenCamera) => {
+    const onStartRecording = async () => {
         try {
             const granted = await PermissionsAndroid.requestMultiple([
                 PermissionsAndroid.PERMISSIONS.CAMERA,
@@ -60,9 +54,24 @@ const Camera = ({ navigation }) => {
             ]);
 
             if (Object.values(granted).every((permission) => permission === PermissionsAndroid.RESULTS.GRANTED)) {
-                onOpenCamera();
+                if (onCameraRef && !isRecording) {
+                    setIsRecording(true);
+                    reset();
+                    const options = {
+                        quality: RNCamera.Constants.VideoQuality['1080p'],
+                        orientation: "auto"
+                    };
+                    const data = await onCameraRef.recordAsync(options);
+                    onCreateVideoThumbnail(data);
+                    navigation.navigate('PLAYER', data);
+                }
             } else {
-                Alert.alert('Need Permissions', 'Open Setting > Permissions and allow access to record video', [
+                const neeeds = Object.keys(granted).reduce(
+                    (lastValue, value) => (lastValue ? `${lastValue}, ` : lastValue) + toPascalCase(value.split('.')[2].replace('_', ' ')),
+                    '',
+                );
+
+                Alert.alert('Need permissions to record video', `Open Setting > Allow > ${neeeds}`, [
                     {
                         text: 'Not now',
                         onPress: () => { },
